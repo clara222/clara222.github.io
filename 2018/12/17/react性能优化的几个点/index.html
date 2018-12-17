@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="author" content="苏瑾诺"><meta name="keywords" content="前端,vue,react,node"><meta name="description" content="我的技术博客"><link rel="alternative" href="/atom.xml" title="Nana's Blog" type="application/atom+xml"><link rel="icon" href="/favicon.png"><title>react性能优化的几个点 - Nana's Blog</title><link rel="stylesheet" href="/css/main.css"><link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css"><!--[if lt IE 9]><script>(function(a,b){a="abbr article aside audio bdi canvas data datalist details dialog figcaption figure footer header hgroup main mark meter nav output progress section summary template time video".split(" ");for(b=a.length-1;b>=0;b--)document.createElement(a[b])})()</script><![endif]--><script src="/js/jquery-3.1.1.min.js"></script><script src="/js/fancybox/jquery.fancybox.min.js"></script></head><body style="opacity:0"><header class="head"><h1 class="head-title u-fl"><a href="/">Nana's Blog</a></h1><nav class="head-nav u-fr"><ul class="head-nav__list"><li class="head-nav__item"><a class="head-nav__link" href="/archives">目录</a></li></ul></nav></header><main class="main"><article class="post"><header class="post__head"> <time class="post__time" datetime="2018-12-17T04:34:28.570Z">十二月 17, 2018</time><h1 class="post__title"><a href="/2018/12/17/react性能优化的几个点/">react性能优化的几个点</a></h1><div class="post__main echo"><ol>
+<li>关于react的虚拟DOM</li>
+</ol>
+<ul>
+<li>虚拟DOM本质上是一个js对象 ，比较js对象，不耗性能 。但是比较真实的DOM， 特别耗性能。<br>( jsx –&gt; createElement –&gt; 虚拟DOM(JS对象) –&gt;真实的DOM )<br><img src="https://upload-images.jianshu.io/upload_images/5120924-1e4d0c5d50f91759.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信图片_20181102170755.png"></li>
+<li>react的虚拟DOM是同层比对，  如果一层不满足要求，下面的就不再会做比对了。<blockquote>
+<p>diff算法的处理方法，就是对操作前后的DOM树同一层的节点进行对比。一层一层对比。只要发现不同，就会删除操作前的dom节点（包括其子节点）<br>替换为操作后的dom节点。</p>
+</blockquote>
+</li>
+<li>在做虚拟DOM节点循环时，给每一个节点加上key值（起个名字），虚拟DOM的比对根据Key值做关联， 极大提高了虚拟DOM比对的性能 。前提是原始和新的虚拟DOM的key值一致 （<strong>这个key值是稳定不变的</strong>，就和我们的身份证号码一样），所以避免直接用index作为key值。</li>
+</ul>
+<ol start="2">
+<li>render函数执行的时机</li>
+</ol>
+<ul>
+<li>首次加载</li>
+<li>当组件的state或者props发生改变的时候，render函数就会重新执行</li>
+<li>当父组件的render函数被运行时，他的所有子组件的render函数都将被重新运行<br>由于<strong>react的父组件重新渲染会导致所有子组件重新渲染</strong>。这个时候我们是不需要所有子组件都跟着重新渲染的，因此需要在该子组件的生命周期<code>shouldComponentUpdate</code>中做判断，来避免无谓的render函数的运行。<br><img src="https://upload-images.jianshu.io/upload_images/5120924-b267530c00d55839.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="微信图片_20181102172755.png"><br>ps: ajax请求获取 ，放在<code>componentDidMount</code>里。setState是异步函数，获取dom放在setState的第二个参数 ，等待页面更新完再获取DOM</li>
+</ul>
+<ol start="3">
+<li>render里面尽量减少新建变量和bind函数</li>
+</ol>
+<ul>
+<li>函数作用域bind(this)的修改放入constructor函数中 ，这样可以保证整个程序里 ，这个函数的作用域绑定操作只会执行一次 ，而放在render中每次render()的时候都会重新执行一遍函数</li>
+</ul>
+<ol start="4">
+<li>如果一个组件只有render函数，建议使用无状态组件来定义</li>
+</ol>
+<ul>
+<li>无状态组件比ui组件性能要高，因为无状态组件只是一个函数。当一个普通组件只有render函数时，我们可以用无状态组件替换掉这个普通组件。普通组件是一个类，这个类生成的对象除了有render函数还有生命周期等。他既要执行render还要执行生命周期函数。</li>
+</ul>
+</div></header><footer class="post__foot u-cf"><ul class="post__tag u-fl"><li class="post__tag__item"><a class="post__tag__link" href="/tags/react/">react</a></li></ul></footer></article></main><footer class="foot"><div class="foot-copy">&copy; 2017-2018 苏瑾诺</div></footer><script src="/js/scroller.js"></script><script src="/js/main.js"></script></body></html>

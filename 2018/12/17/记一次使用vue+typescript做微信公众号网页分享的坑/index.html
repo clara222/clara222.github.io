@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="generator" content="Hexo 3.8.0"><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="author" content="苏瑾诺"><meta name="keywords" content="前端,vue,react,node"><meta name="description" content="我的技术博客"><link rel="alternative" href="/atom.xml" title="Nana's Blog" type="application/atom+xml"><link rel="icon" href="/favicon.png"><title>记一次使用vue+typescript做微信公众号网页分享的坑 - Nana's Blog</title><link rel="stylesheet" href="/css/main.css"><link rel="stylesheet" href="/js/fancybox/jquery.fancybox.min.css"><!--[if lt IE 9]><script>(function(a,b){a="abbr article aside audio bdi canvas data datalist details dialog figcaption figure footer header hgroup main mark meter nav output progress section summary template time video".split(" ");for(b=a.length-1;b>=0;b--)document.createElement(a[b])})()</script><![endif]--><script src="/js/jquery-3.1.1.min.js"></script><script src="/js/fancybox/jquery.fancybox.min.js"></script></head><body style="opacity:0"><header class="head"><h1 class="head-title u-fl"><a href="/">Nana's Blog</a></h1><nav class="head-nav u-fr"><ul class="head-nav__list"><li class="head-nav__item"><a class="head-nav__link" href="/archives">目录</a></li></ul></nav></header><main class="main"><article class="post"><header class="post__head"> <time class="post__time" datetime="2018-12-17T04:34:28.586Z">十二月 17, 2018</time><h1 class="post__title"><a href="/2018/12/17/记一次使用vue+typescript做微信公众号网页分享的坑/">记一次使用vue+typescript做微信公众号网页分享的坑</a></h1><div class="post__main echo"><p><strong>需求场景</strong><br>这个微信网页是一个用户测试的活动。开始测试之前需授权获取用户信息，所以新建一个firstPage页面作为/页面来判断需不需要授权。如果测试完成分享给用户，用户看到的是分享人的结果页面，这个页面是不需要授权的。扫描其中的二维码开始测试才需要授权。所以在前端路由里传一个query 的参数。根据这个参数(this.$route.query.xxx)判断，用户打开的是结果页（不需授权）还是测试页（需授权）。</p>
+<p><strong>流程</strong><br><img src="https://upload-images.jianshu.io/upload_images/5120924-b54b27ef518575e4.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="wx-liuc.png"><br><strong>绑定域名</strong><br><img src="https://upload-images.jianshu.io/upload_images/5120924-e6fd672f2f35a6e6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="wx-js.png"><br><strong>引入JS文件</strong><br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">import wx from &apos;wx-sdk-ts&apos;</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>vue-cli2.0  引入的是<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">import wx from&apos;weixin-js-sdk&apos;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p><strong>通过config接口注入权限验证配置</strong></p>
+<blockquote>
+<p>所有需要使用JS-SDK的页面必须先注入配置信息，否则将无法调用（同一个url仅需调用一次，对于变化url的SPA的web app可在每次url变化时进行调用）</p>
+<ul>
+<li>所以获取微信配置的代码写在App.vue文件里。created钩子函数里调用一次。watch到route变化时也调用一次。</li>
+<li>分享给好友的结果页，里面动态生成的二维码url需携带当前用户的信息。以便在授权页面拿到分享人的信息。为了方便，授权页面最好独立写到一个文件里 page_relation.vue </li>
+</ul>
+</blockquote>
+<p><strong>记录开发过程中几个坑</strong></p>
+<ul>
+<li>如果项目采用非history模式(vue-router默认 hash 模式 )，则需要去掉url上#后的部分传给后端换取微信签名.</li>
+<li>授权这里由后端处理。授权完成后由后端将页面重定向到指定页面.<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">let url = encodeURIComponent(</span><br><span class="line">      &quot; http://xxx.cn/h5/migrationQuiz/auth?router_path=home&amp;fromwxuser=&quot;</span><br><span class="line">    );</span><br><span class="line">    </span><br><span class="line">    url = url + userId;</span><br><span class="line">    window.location.href =</span><br><span class="line">      &quot;https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx6e8235ac81ee7570&amp;redirect_uri=&quot; +</span><br><span class="line">      url +</span><br><span class="line">      &quot;&amp;response_type=code&amp;scope=snsapi_userinfo&amp;state=STATE&amp;connect_redirect=1#wechat_redirect&quot;;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>这里注意：因为前端路由是带#的。比如重定向后跳转的页面是：<a href="http://xxx.cn?id=xxx#/home" target="_blank" rel="noopener">http://xxx.cn?id=xxx#/home</a> 这个时候如果直接给后端这个地址，发现这个页面是找不到的。在这个项目中后端在路由里传入了一个router_path的参数。我要重定向到#/home页面，就在地址中加上router_path=home即可。另外附上后端nodejs代码。看到这个，大家应该不难懂了。<br><img src="https://upload-images.jianshu.io/upload_images/5120924-a87c0849d26078c2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="shouquan.png"></p>
+<ul>
+<li>另外，为了方便前端测试，我们可爱的后端还兼容了本地配置的域名，参照如下代码<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">let debug_redirect_url = encodeURIComponent(&quot;www.example.com&quot;);</span><br><span class="line"></span><br><span class="line">let url = encodeURIComponent(</span><br><span class="line">&quot; http://xxx.cn/h5/migrationQuiz/auth?debug_redirect_url=&quot; +</span><br><span class="line"> debug_redirect_url +</span><br><span class="line"> &quot;&amp;router_path=home&amp;fromwxuser=&quot;</span><br><span class="line"> );</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>如上，本地开发配置的域名为：<a href="www.example.com">www.example.com</a><br>这里注意：<em>为了能够正常使用开发者工具调试，配置的域名应在公众号JS接口安全域名下</em>。</p>
+<ul>
+<li>分享给好友、分享到朋友圈时，发现左小角的图标找不到。正确做法时将这些图片放到服务器上。url使用服务器的链接。</li>
+<li>分享的link，根据分享后用户需要看到的内容而定，需要在子组件将link，emit到App.vue里进行获取。<br>本项目中用户测试完成的结果页result.vue页面里，需将分享链接发送给 App.vue。其他情况下sharelink默认为网站的初始页。</li>
+<li>打包到服务器时发现文件都404，在vue-cli2.0的处理方式是：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">build -&gt; config -&gt; index.js -&gt; build&#123;&#125; -&gt; assetsPublicPath: &apos;./&apos;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p><img src="https://upload-images.jianshu.io/upload_images/5120924-a302d859dc5e5281.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="1.png"><br>由于本项目中用到了vuecli3+typescript: 所以相应的配置如下：<br><img src="https://upload-images.jianshu.io/upload_images/5120924-fdf73c670c5e557c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="2.png"></p>
+<ul>
+<li>由于本项目最后生成的结果页是一个html页面。而产品的需求是，在最终的结果页面，可以长按保存成图片，也就是要在前端将h5页面生成一张图片。用到了html2canvas。具体使用方式参见代码。在处理这个功能的时候，也遇到了一个大坑。参照如图所示:<br><img src="https://upload-images.jianshu.io/upload_images/5120924-85f48a93eae85c8c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="canvas.png"><br>就是因为最终要生成的图片有用户的微信头像，跨域了，不得不说，微信还是很坑的。最终后端给的解决方案是：<br>将用户的微信头像改成通过我们这边h5的服务器来获取,然后再发给前端头像地址,改成用我们的服务器的地址。<br>至此，这个项目就算完工了。</li>
+</ul>
+<p><strong>最后</strong></p>
+<p>由于本项目使用微信开发者工具进行本地测试，需配置本地域名（<a href="http://www.example.com），且配置的域名应在公众号JS接口安全域名下。测试过程中使用到了nginx，所以附上nginx的配置代码。" target="_blank" rel="noopener">www.example.com），且配置的域名应在公众号JS接口安全域名下。测试过程中使用到了nginx，所以附上nginx的配置代码。</a></p>
+<ul>
+<li><p>找到本地host文件<br>windows系统：C:\Windows\System32\drivers\etc</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1	localhost</span><br><span class="line">127.0.0.1	www.example.com</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>nginx开机：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start nginx</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>重启nginx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nginx -s reload</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>配置nginx: D:\nginx-1.14.0\nginx-1.14.0\conf\nginx.conf</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">server &#123;</span><br><span class="line">        listen       80;</span><br><span class="line">        server_name  www.example.com;</span><br><span class="line">        // 跨域配置</span><br><span class="line">        location ^~ /h5/ &#123;</span><br><span class="line">            proxy_pass http://xxx.cn;</span><br><span class="line">        &#125;</span><br><span class="line">        // 代理到本地</span><br><span class="line">        location / &#123;</span><br><span class="line">            proxy_pass http://localhost:52152;</span><br><span class="line">        &#125;</span><br><span class="line">        # location / &#123;</span><br><span class="line">        #     root   html;</span><br><span class="line">        #     index  index.html index.htm;</span><br><span class="line">        # &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>其他情况请参考几篇不错的文章：<br>    <a href="https://juejin.im/post/5aef2db3f265da0b9c10899e" target="_blank" rel="noopener">https://juejin.im/post/5aef2db3f265da0b9c10899e</a><br>    <a href="https://www.jianshu.com/p/1a35e1dbe1ad" target="_blank" rel="noopener">https://www.jianshu.com/p/1a35e1dbe1ad</a><br>另附本项目github地址：<a href="https://github.com/clara222/wxh5">https://github.com/clara222/wxh5</a></p>
+</div></header><footer class="post__foot u-cf"><ul class="post__tag u-fl"><li class="post__tag__item"><a class="post__tag__link" href="/tags/vue/">vue</a></li><li class="post__tag__item"><a class="post__tag__link" href="/tags/typescript/">typescript</a></li></ul></footer></article></main><footer class="foot"><div class="foot-copy">&copy; 2017-2018 苏瑾诺</div></footer><script src="/js/scroller.js"></script><script src="/js/main.js"></script></body></html>
